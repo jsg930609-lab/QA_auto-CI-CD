@@ -1,5 +1,3 @@
-# web/app.py 상단 부분 수정
-
 from flask import Flask, render_template, jsonify, request, send_file
 from flask_cors import CORS
 import asyncio
@@ -22,9 +20,7 @@ from test_case_manager import TestCaseManager
 from openai_interpreter import OpenAITestCaseInterpreter
 from playwright_executor import PlaywrightMCPExecutor
 from report_generator import ReportGenerator
-
-# ✨ config.py의 settings 객체 import
-from config import settings as config  # ← 이렇게 수정!
+from config import settings as config  # ✅ 이렇게 import
 
 app = Flask(__name__)
 CORS(app)
@@ -85,7 +81,11 @@ def get_test_cases():
         
         if not config.GOOGLE_DRIVE_FILE_ID:
             print("⚠️ GOOGLE_DRIVE_FILE_ID가 설정되지 않았습니다")
-            return jsonify([])
+            return jsonify({
+                'success': False,
+                'error': 'GOOGLE_DRIVE_FILE_ID가 설정되지 않았습니다',
+                'testCases': []
+            })
         
         # GoogleDriveReader 초기화
         print("GoogleDriveReader 초기화 중...")
@@ -100,10 +100,9 @@ def get_test_cases():
         if test_cases_raw:
             print(f"테스트 케이스 키: {list(test_cases_raw[0].keys())}")
         
-        # Dict를 정리해서 반환 (한글 키와 영문 키 모두 지원)
+        # Dict를 정리해서 반환
         result = []
         for i, tc in enumerate(test_cases_raw):
-            # 다양한 키 이름 지원
             tc_dict = {
                 "id": tc.get("id") or tc.get("시나리오 ID") or f"TC_{i+1}",
                 "title": (
@@ -135,22 +134,31 @@ def get_test_cases():
                     tc.get("상태") or 
                     "NEW"
                 ),
-                # 추가 정보
-                "category": tc.get("대분류", ""),
-                "subcategory": tc.get("소분류", ""),
-                "precondition": tc.get("Pre-condition", "")
+                "category": tc.get("category") or tc.get("대분류", ""),
+                "subcategory": tc.get("subcategory") or tc.get("소분류", ""),
+                "precondition": tc.get("precondition") or tc.get("Pre-condition", "")
             }
             result.append(tc_dict)
         
         print(f"✅ {len(result)}개 테스트 케이스 변환 완료")
         
-        # 첫 번째 결과 샘플 출력 (디버깅용)
         if result:
             print(f"변환된 첫 번째 케이스: ID={result[0]['id']}, 제목={result[0]['title']}")
         
         print("=" * 60)
         
-        return jsonify(result)
+        # ✅ 객체로 감싸서 반환 (중요!)
+        return jsonify({
+            'success': True,
+            'testCases': result,
+            'stats': {
+                'total': len(result),
+                'passed': len([tc for tc in result if tc.get('status') == 'PASS']),
+                'failed': len([tc for tc in result if tc.get('status') == 'FAIL']),
+                'new': len([tc for tc in result if tc.get('status') == 'NEW']),
+                'skipped': 0
+            }
+        })
     
     except Exception as e:
         print("=" * 60)
@@ -160,18 +168,13 @@ def get_test_cases():
         traceback.print_exc()
         
         print("=" * 60)
-        print("⚠️ 샘플 데이터 반환")
         
-        return jsonify([
-            {
-                "id": "SAMPLE_001",
-                "title": "샘플 테스트 - Google Sheets 연결 실패",
-                "url": "https://example.com",
-                "steps": ["샘플 단계 1", "샘플 단계 2"],
-                "expected": "샘플 결과",
-                "status": "NEW"
-            }
-        ])
+        # ✅ 에러 시에도 같은 형식으로 반환
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'testCases': []
+        }), 500
 
 @app.route('/api/stats')
 def get_stats():
@@ -183,24 +186,97 @@ def get_stats():
         total = len(test_status["results"])
         
         return jsonify({
-            "total": total,
-            "passed": passed,
-            "failed": failed,
-            "skipped": skipped
+            'success': True,
+            'stats': {
+                "total": total,
+                "passed": passed,
+                "failed": failed,
+                "skipped": skipped
+            }
         })
     
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/api/history')
 def get_history():
     """실행 히스토리 조회"""
-    return jsonify(test_history[-10:])
+    try:
+        print("\n[히스토리] 로드 시작")
+        
+        # 히스토리 데이터 가공
+        formatted_history = []
+        for item in test_history[-10:]:  # 최근 10개
+            # report_path 변환 (백슬래시 → 슬래시)
+            report_path = None
+            if item.get('report_path'):
+                # Windows 경로를 웹 URL로 변환
+                report_path = item['report_path'].replace('\\', '/')
+                # reports/ 경로가 없으면 추가
+                if not report_path.startswith('/'):
+                    report_path = '/' + report_path
+            
+            # duration 포맷팅 (초 → "X분 Y초")
+            duration_str = 'N/A'
+            if 'duration' in item:
+                total_seconds = int(item['duration'])
+                minutes = total_seconds // 60
+                seconds = total_seconds % 60
+                if minutes > 0:
+                    duration_str = f"{minutes}분 {seconds}초"
+                else:
+                    duration_str = f"{seconds}초"
+            
+            formatted_item = {
+                'timestamp': item.get('timestamp'),
+                'date': item.get('timestamp'),  # date 필드 추가
+                'total': item.get('total', 0),
+                'passed': item.get('passed', 0),
+                'failed': item.get('failed', 0),
+                'skipped': item.get('skipped', 0),
+                'error': item.get('error', 0),
+                'duration': duration_str,
+                'report_path': report_path
+            }
+            formatted_history.append(formatted_item)
+        
+        print(f"[히스토리] {len(formatted_history)}개 로드 완료")
+        
+        # 첫 번째 항목 샘플 출력
+        if formatted_history:
+            print(f"[히스토리] 첫 번째 항목: {formatted_history[0]}")
+        
+        return jsonify({
+            'success': True,
+            'history': formatted_history
+        })
+    
+    except Exception as e:
+        print(f"[히스토리] 로드 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'history': []
+        }), 500
 
 @app.route('/api/test-status')
 def get_test_status():
     """현재 테스트 실행 상태 조회"""
-    return jsonify(test_status)
+    try:
+        return jsonify({
+            'success': True,
+            'status': test_status
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/api/run-tests', methods=['POST'])
 def run_tests():
@@ -445,6 +521,141 @@ def get_github_actions_status():
     except Exception as e:
         print(f"GitHub Actions 상태 조회 오류: {e}")
         return jsonify([])
+
+# ============================================
+# GitHub Actions API
+# ============================================
+
+@app.route('/api/github/runs')
+def get_github_runs():
+    """GitHub Actions 실행 히스토리 조회"""
+    try:
+        print("\n[GitHub Actions] 실행 히스토리 조회")
+        
+        # ✅ config.settings가 아니라 GITHUB_TOKEN 직접 사용
+        if not GITHUB_TOKEN or not GITHUB_REPO:
+            return jsonify({
+                'success': False,
+                'error': 'GitHub 설정이 완료되지 않았습니다.'
+            }), 200
+        
+        headers = {
+            'Authorization': f'Bearer {GITHUB_TOKEN}',  # ✅ 수정
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+        }
+        
+        url = f'https://api.github.com/repos/{GITHUB_REPO}/actions/runs'  # ✅ 수정
+        params = {
+            'per_page': 10,
+            'page': 1
+        }
+        
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            runs = data.get('workflow_runs', [])
+            
+            formatted_runs = []
+            for run in runs[:10]:
+                formatted_runs.append({
+                    'id': run.get('id'),
+                    'name': run.get('name'),
+                    'status': run.get('status'),
+                    'conclusion': run.get('conclusion'),
+                    'created_at': run.get('created_at'),
+                    'updated_at': run.get('updated_at'),
+                    'html_url': run.get('html_url')
+                })
+            
+            print(f"[GitHub Actions] {len(formatted_runs)}개 실행 히스토리 조회 성공")
+            
+            return jsonify({
+                'success': True,
+                'runs': formatted_runs
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'GitHub API 오류: {response.status_code}'
+            }), 200
+            
+    except Exception as e:
+        print(f"[GitHub Actions] 오류: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'서버 오류: {str(e)}'
+        }), 200
+
+@app.route('/api/github/trigger', methods=['POST'])
+def trigger_github_action():
+    """GitHub Actions 워크플로우 트리거"""
+    try:
+        data = request.json
+        print(f"\n[GitHub Actions] 워크플로우 트리거 요청: {data}")
+        
+        if not GITHUB_TOKEN or not GITHUB_REPO:
+            return jsonify({
+                'success': False,
+                'error': 'GitHub 설정이 완료되지 않았습니다.'
+            }), 200
+        
+        headers = {
+            'Authorization': f'Bearer {GITHUB_TOKEN}',
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+        }
+        
+        payload = {
+            'ref': 'main',
+            'inputs': {
+                'test_environment': data.get('environment', 'production'),
+                'browser': data.get('browser', 'chromium')
+            }
+        }
+        
+        url = f'https://api.github.com/repos/{GITHUB_REPO}/actions/workflows/{GITHUB_WORKFLOW_ID}/dispatches'
+        
+        print(f"[GitHub Actions] URL: {url}")
+        print(f"[GitHub Actions] Payload: {json.dumps(payload, indent=2)}")
+        
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        
+        print(f"[GitHub Actions] 응답 상태 코드: {response.status_code}")
+        
+        if response.status_code == 204:
+            return jsonify({
+                'success': True,
+                'message': 'GitHub Actions 워크플로우가 트리거되었습니다.',
+                'run_url': f'https://github.com/{GITHUB_REPO}/actions'
+            }), 200
+        else:
+            error_detail = {}
+            try:
+                if response.text:
+                    error_detail = response.json()
+            except:
+                error_detail = {'raw_response': response.text}
+            
+            return jsonify({
+                'success': False,
+                'error': f'GitHub API 오류: {response.status_code}',
+                'detail': error_detail
+            }), 200
+            
+    except Exception as e:
+        print(f"[GitHub Actions] 오류: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f'서버 오류: {str(e)}'
+        }), 200
+
+# ============================================
+# 서버 시작
+# ============================================
 
 if __name__ == '__main__':
     # 필요한 디렉토리 생성

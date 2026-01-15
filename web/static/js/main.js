@@ -2,199 +2,117 @@
 // 전역 변수
 // ============================================
 let allTestCases = [];
-let updateInterval = null;
+let allHistory = [];
 
 // ============================================
 // 초기화
 // ============================================
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM 로드 완료');
-    initializeApp();
-});
-
-function initializeApp() {
-    console.log('앱 초기화 시작');
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('페이지 로드 완료');
     
-    // 탭 전환
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            switchTab(e.target.dataset.tab);
-        });
-    });
+    // 탭 전환 이벤트
+    setupTabs();
     
-    // 새로고침
-    const refreshBtn = document.getElementById('refreshBtn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', refreshData);
-        console.log('새로고침 버튼 이벤트 등록');
-    }
+    // 초기 데이터 로드
+    loadTestCases();
+    loadHistory();
+    loadGithubRuns();
     
-    // 테스트 실행
-    const runTestBtn = document.getElementById('runTestBtn');
-    if (runTestBtn) {
-        runTestBtn.addEventListener('click', runTests);
-        console.log('테스트 실행 버튼 이벤트 등록');
-    }
-    
-    // GitHub Actions 버튼
-    const runGithubBtn = document.getElementById('runGithubBtn');
-    if (runGithubBtn) {
-        runGithubBtn.addEventListener('click', () => {
-            console.log('GitHub Actions 버튼 클릭됨');
-            showGithubModal();
-        });
-        console.log('GitHub Actions 버튼 이벤트 등록 완료');
-    } else {
-        console.error('GitHub Actions 버튼을 찾을 수 없습니다!');
-    }
-    
-    // GitHub Actions 탭 내 트리거 버튼
-    const triggerGithubBtn = document.getElementById('triggerGithubBtn');
-    if (triggerGithubBtn) {
-        triggerGithubBtn.addEventListener('click', triggerGithubActionsFromTab);
-    }
-    
-    // 검색
+    // 검색 및 필터 이벤트
     const searchInput = document.getElementById('searchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    
     if (searchInput) {
         searchInput.addEventListener('input', filterTestCases);
     }
     
-    // 필터
-    const filterStatus = document.getElementById('filterStatus');
     if (filterStatus) {
         filterStatus.addEventListener('change', filterTestCases);
     }
     
-    // 모달 닫기
-    const modalClose = document.querySelector('.modal-close');
-    if (modalClose) {
-        modalClose.addEventListener('click', closeModal);
-    }
-    
-    // 모달 외부 클릭 시 닫기
+    // 모달 닫기 이벤트
     const modal = document.getElementById('modal');
     if (modal) {
-        modal.addEventListener('click', (e) => {
+        modal.addEventListener('click', function(e) {
             if (e.target === modal) {
                 closeModal();
             }
         });
     }
-    
-    // 초기 데이터 로드
-    refreshData();
-    
-    console.log('앱 초기화 완료');
-}
+});
 
 // ============================================
-// 데이터 로드
+// 탭 관리
 // ============================================
-async function refreshData() {
-    console.log('데이터 새로고침');
-    try {
-        await Promise.all([
-            loadTestCases(),
-            loadStats(),
-            loadHistory(),
-            checkTestStatus()
-        ]);
-    } catch (error) {
-        console.error('데이터 새로고침 오류:', error);
+function setupTabs() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+            switchTab(tabName);
+        });
+    });
+}
+
+function switchTab(tabName) {
+    console.log('탭 전환:', tabName);
+    
+    // 모든 탭 버튼 비활성화
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // 모든 탭 컨텐츠 숨김
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // 선택된 탭 활성화
+    const selectedButton = document.querySelector(`[data-tab="${tabName}"]`);
+    const selectedContent = document.getElementById(`${tabName}Tab`);
+    
+    if (selectedButton) selectedButton.classList.add('active');
+    if (selectedContent) selectedContent.classList.add('active');
+    
+    // 탭별 데이터 로드
+    if (tabName === 'testCases') {
+        loadTestCases();
+    } else if (tabName === 'history') {
+        loadHistory();
+    } else if (tabName === 'github') {
+        loadGithubRuns();
     }
 }
 
+// ============================================
+// 테스트 케이스
+// ============================================
 async function loadTestCases() {
     try {
-        console.log('테스트 케이스 로드 중...');
+        console.log('테스트 케이스 로드 시작');
+        
         const response = await fetch('/api/test-cases');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
         const data = await response.json();
-        console.log('테스트 케이스 로드 완료:', data.length);
         
-        allTestCases = data;
-        renderTestCases(data);
-    } catch (error) {
-        console.error('테스트 케이스 로드 실패:', error);
-        const container = document.getElementById('testCasesList');
-        if (container) {
-            container.innerHTML = '<p class="empty-state">테스트 케이스를 불러올 수 없습니다.</p>';
-        }
-    }
-}
-
-async function loadStats() {
-    try {
-        const response = await fetch('/api/stats');
+        console.log('테스트 케이스 데이터:', data);
         
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const stats = await response.json();
-        
-        document.getElementById('totalTests').textContent = stats.total || 0;
-        document.getElementById('passedTests').textContent = stats.passed || 0;
-        document.getElementById('failedTests').textContent = stats.failed || 0;
-        document.getElementById('skippedTests').textContent = stats.skipped || 0;
-        
-        const successRate = stats.total > 0 ? ((stats.passed / stats.total) * 100).toFixed(1) : 0;
-        document.getElementById('successRate').textContent = `${successRate}%`;
-    } catch (error) {
-        console.error('통계 로드 실패:', error);
-    }
-}
-
-async function loadHistory() {
-    try {
-        const response = await fetch('/api/history');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const history = await response.json();
-        renderHistory(history);
-    } catch (error) {
-        console.error('히스토리 로드 실패:', error);
-    }
-}
-
-async function checkTestStatus() {
-    try {
-        const response = await fetch('/api/test-status');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const status = await response.json();
-        
-        if (status.running) {
-            showProgress(status);
-            if (!updateInterval) {
-                updateInterval = setInterval(checkTestStatus, 1000);
-            }
+        if (data.success) {
+            allTestCases = data.testCases;
+            renderTestCases(allTestCases);
+            updateStats(data.stats);
         } else {
-            hideProgress();
-            if (updateInterval) {
-                clearInterval(updateInterval);
-                updateInterval = null;
-            }
+            console.error('테스트 케이스 로드 실패:', data.error);
+            document.getElementById('testCasesList').innerHTML = 
+                '<p class="empty-state">⚠️ 테스트 케이스를 불러오는데 실패했습니다.</p>';
         }
     } catch (error) {
-        console.error('상태 확인 실패:', error);
+        console.error('테스트 케이스 로드 오류:', error);
+        document.getElementById('testCasesList').innerHTML = 
+            '<p class="empty-state">⚠️ 서버 연결 오류</p>';
     }
 }
 
-// ============================================
-// UI 렌더링
-// ============================================
 function renderTestCases(testCases) {
     const container = document.getElementById('testCasesList');
     
@@ -217,7 +135,7 @@ function renderTestCases(testCases) {
         return `
             <div class="test-case-item" onclick="showTestDetail(${index})">
                 <div class="test-case-header">
-                    <span class="test-case-id">#${tc.id || index + 1}</span>
+                    <span class="test-case-id">#${tc.id || 'TC_' + (index + 1)}</span>
                     <span class="status-badge ${statusClass}">
                         ${statusEmoji} ${tc.status || 'NEW'}
                     </span>
@@ -228,388 +146,6 @@ function renderTestCases(testCases) {
     }).join('');
 }
 
-function renderHistory(history) {
-    const container = document.getElementById('historyList');
-    
-    if (!container) {
-        console.error('historyList 컨테이너를 찾을 수 없습니다');
-        return;
-    }
-    
-    if (!history || history.length === 0) {
-        container.innerHTML = '<p class="empty-state">실행 히스토리가 없습니다.</p>';
-        return;
-    }
-    
-    container.innerHTML = history.map(item => {
-        const date = new Date(item.timestamp);
-        const successRate = item.total > 0 ? 
-            ((item.passed / item.total) * 100).toFixed(1) : 0;
-        
-        return `
-            <div class="history-item">
-                <div class="history-header">
-                    <span class="history-date">${date.toLocaleString('ko-KR')}</span>
-                    <span class="history-stats">
-                        ✅ ${item.passed} / ❌ ${item.failed} / ⏭️ ${item.skipped}
-                    </span>
-                </div>
-                <div class="history-bar">
-                    <div class="history-bar-fill" style="width: ${successRate}%"></div>
-                </div>
-                <div class="history-footer">
-                    <span>성공률: ${successRate}%</span>
-                    ${item.report_path ? 
-                        `<a href="${item.report_path}" target="_blank" class="btn btn-sm btn-secondary">리포트 보기</a>` 
-                        : ''}
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-function showProgress(status) {
-    const section = document.getElementById('progressSection');
-    const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('progressText');
-    const currentTest = document.getElementById('currentTest');
-    
-    if (section) section.style.display = 'block';
-    if (progressFill) progressFill.style.width = `${status.progress}%`;
-    if (progressText) progressText.textContent = `${Math.round(status.progress * status.total / 100)}/${status.total}`;
-    if (currentTest) currentTest.textContent = status.current_test || '실행 중...';
-}
-
-function hideProgress() {
-    const section = document.getElementById('progressSection');
-    if (section) section.style.display = 'none';
-}
-
-// ============================================
-// 테스트 실행
-// ============================================
-async function runTests() {
-    const btn = document.getElementById('runTestBtn');
-    if (!btn) return;
-    
-    btn.disabled = true;
-    btn.textContent = '⏳ 실행 중...';
-    
-    try {
-        const response = await fetch('/api/run-tests', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (response.ok) {
-            updateInterval = setInterval(checkTestStatus, 1000);
-        } else {
-            alert('테스트 실행 실패');
-        }
-    } catch (error) {
-        console.error('테스트 실행 오류:', error);
-        alert('테스트 실행 중 오류가 발생했습니다.');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = '▶️ 로컬 테스트 실행';
-    }
-}
-
-// ============================================
-// GitHub Actions 모달
-// ============================================
-function showGithubModal() {
-    console.log('GitHub Actions 모달 표시');
-    
-    const modalBody = `
-        <div class="github-modal-content">
-            <p style="margin-bottom: 20px; color: #4a5568;">
-                GitHub Actions 워크플로우를 실행합니다.
-            </p>
-            
-            <div class="form-group">
-                <label>환경:</label>
-                <select id="modalGhEnvironment" class="input">
-                    <option value="production">Production</option>
-                    <option value="staging">Staging</option>
-                    <option value="development">Development</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label>테스트 스위트:</label>
-                <input type="text" id="modalGhTestSuite" class="input" 
-                       value="all" placeholder="all">
-            </div>
-            
-            <div class="form-group">
-                <label>브라우저:</label>
-                <select id="modalGhBrowser" class="input">
-                    <option value="chromium">Chromium</option>
-                    <option value="firefox">Firefox</option>
-                    <option value="webkit">WebKit</option>
-                </select>
-            </div>
-            
-            <div style="margin-top: 24px; display: flex; gap: 12px;">
-                <button id="modalTriggerBtn" class="btn btn-primary" style="flex: 1;">
-                    🚀 실행
-                </button>
-                <button id="modalCancelBtn" class="btn btn-secondary" style="flex: 1;">
-                    취소
-                </button>
-            </div>
-        </div>
-    `;
-    
-    showModal('GitHub Actions 실행', modalBody);
-    
-    // 모달 내 버튼에 이벤트 리스너 추가
-    setTimeout(() => {
-        const triggerBtn = document.getElementById('modalTriggerBtn');
-        const cancelBtn = document.getElementById('modalCancelBtn');
-        
-        if (triggerBtn) {
-            triggerBtn.addEventListener('click', triggerGithubActionsFromModal);
-        }
-        
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', closeModal);
-        }
-    }, 100);
-}
-
-async function triggerGithubActionsFromModal() {
-    console.log('GitHub Actions 트리거 시작');
-    
-    const environment = document.getElementById('modalGhEnvironment')?.value || 'production';
-    const testSuite = document.getElementById('modalGhTestSuite')?.value || 'all';
-    const browser = document.getElementById('modalGhBrowser')?.value || 'chromium';
-    
-    console.log('선택된 옵션:', { environment, testSuite, browser });
-    
-    closeModal();
-    
-    const originalTitle = document.title;
-    document.title = '⏳ GitHub Actions 트리거 중...';
-    
-    try {
-        const response = await fetch('/api/trigger-github-actions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                environment: environment,
-                test_suite: testSuite,
-                browser: browser
-            })
-        });
-        
-        const data = await response.json();
-        console.log('API 응답:', data);
-        
-        if (response.ok) {
-            const successBody = `
-                <div style="text-align: center; padding: 20px;">
-                    <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
-                    <p style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">
-                        ${data.message}
-                    </p>
-                    <p style="color: #718096; margin-bottom: 24px;">
-                        GitHub Actions 페이지에서 실행 상태를 확인하세요.
-                    </p>
-                    <div style="display: flex; gap: 12px; justify-content: center;">
-                        <button id="openGithubBtn" class="btn btn-primary">
-                            🔗 GitHub Actions 열기
-                        </button>
-                        <button id="closeSuccessBtn" class="btn btn-secondary">
-                            닫기
-                        </button>
-                    </div>
-                </div>
-            `;
-            showModal('실행 완료', successBody);
-            
-            setTimeout(() => {
-                const openBtn = document.getElementById('openGithubBtn');
-                const closeBtn = document.getElementById('closeSuccessBtn');
-                
-                if (openBtn && data.url) {
-                    openBtn.addEventListener('click', () => {
-                        window.open(data.url, '_blank');
-                        closeModal();
-                    });
-                }
-                
-                if (closeBtn) {
-                    closeBtn.addEventListener('click', closeModal);
-                }
-            }, 100);
-            
-        } else {
-            showErrorModal(data.error || '알 수 없는 오류가 발생했습니다.');
-        }
-    } catch (error) {
-        console.error('GitHub Actions 트리거 오류:', error);
-        showErrorModal(error.message);
-    } finally {
-        document.title = originalTitle;
-    }
-}
-
-function showErrorModal(message) {
-    const errorBody = `
-        <div style="text-align: center; padding: 20px;">
-            <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
-            <p style="font-size: 18px; font-weight: 600; margin-bottom: 12px; color: #e53e3e;">
-                오류 발생
-            </p>
-            <p style="color: #718096; margin-bottom: 24px;">
-                ${message}
-            </p>
-            <button id="closeErrorBtn" class="btn btn-secondary">
-                닫기
-            </button>
-        </div>
-    `;
-    showModal('오류', errorBody);
-    
-    setTimeout(() => {
-        const closeBtn = document.getElementById('closeErrorBtn');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', closeModal);
-        }
-    }, 100);
-}
-
-// ============================================
-// GitHub Actions 탭
-// ============================================
-async function triggerGithubActionsFromTab() {
-    const btn = document.getElementById('triggerGithubBtn');
-    if (!btn) return;
-    
-    const originalText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = '⏳ 트리거 중...';
-    
-    try {
-        const environment = document.getElementById('ghEnvironment')?.value || 'production';
-        const browser = document.getElementById('ghBrowser')?.value || 'chromium';
-        
-        const response = await fetch('/api/trigger-github-actions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                environment: environment,
-                browser: browser
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            alert(`✅ ${data.message}\n\nGitHub Actions 페이지에서 확인하세요.`);
-            
-            await loadGithubActionsStatus();
-            
-            if (data.url) {
-                window.open(data.url, '_blank');
-            }
-        } else {
-            alert(`❌ 오류: ${data.error}`);
-        }
-    } catch (error) {
-        console.error('GitHub Actions 트리거 오류:', error);
-        alert('트리거 중 오류가 발생했습니다.');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
-    }
-}
-
-async function loadGithubActionsStatus() {
-    try {
-        const response = await fetch('/api/github-actions-status');
-        const runs = await response.json();
-        
-        renderGithubRuns(runs);
-    } catch (error) {
-        console.error('GitHub Actions 상태 로드 실패:', error);
-    }
-}
-
-function renderGithubRuns(runs) {
-    const container = document.getElementById('githubRunsList');
-    
-    if (!container) return;
-    
-    if (!runs || runs.length === 0) {
-        container.innerHTML = '<p class="empty-state">실행된 워크플로우가 없습니다.</p>';
-        return;
-    }
-    
-    container.innerHTML = runs.map(run => {
-        const date = new Date(run.created_at);
-        const statusClass = run.conclusion === 'success' ? 'success' : 
-                           run.conclusion === 'failure' ? 'failure' : '';
-        
-        return `
-            <div class="github-run-item">
-                <div>
-                    <div style="font-weight: 600; margin-bottom: 4px;">${run.name}</div>
-                    <div style="font-size: 12px; color: #718096;">
-                        ${date.toLocaleString('ko-KR')}
-                    </div>
-                </div>
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <span class="run-status ${run.status} ${statusClass}">
-                        ${run.status === 'completed' ? run.conclusion : run.status}
-                    </span>
-                    <a href="${run.html_url}" target="_blank" class="btn btn-secondary btn-sm">
-                        보기
-                    </a>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// ============================================
-// 모달
-// ============================================
-function showModal(title, body) {
-    console.log('모달 표시:', title);
-    const modal = document.getElementById('modal');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalBody = document.getElementById('modalBody');
-    
-    if (modal && modalTitle && modalBody) {
-        modalTitle.textContent = title;
-        modalBody.innerHTML = body;
-        modal.style.display = 'flex';  // ✨ 'flex'로 변경
-        // 또는
-        modal.classList.add('active');  // ✨ 클래스 방식
-    }
-}
-
-function closeModal() {
-    console.log('모달 닫기');
-    const modal = document.getElementById('modal');
-    if (modal) {
-        modal.style.display = 'none';
-        modal.classList.remove('active');  // ✨ 클래스 제거
-    }
-}
-
-// ============================================
-// 기타
-// ============================================
 function showTestDetail(index) {
     const testCase = allTestCases[index];
     if (!testCase) return;
@@ -683,51 +219,489 @@ function showTestDetail(index) {
     showModal(`테스트 케이스 상세`, body);
 }
 
-function filterTestCases() {
-    const searchText = document.getElementById('searchInput')?.value.toLowerCase() || '';
-    const statusFilter = document.getElementById('filterStatus')?.value || '';
+function updateStats(stats) {
+    if (!stats) return;
     
-    const filtered = allTestCases.filter(tc => {
-        const matchesSearch = !searchText || 
-            (tc.title && tc.title.toLowerCase().includes(searchText)) ||
-            (tc.id && tc.id.toString().includes(searchText));
-        
-        const matchesStatus = !statusFilter || tc.status === statusFilter;
-        
-        return matchesSearch && matchesStatus;
+    const elements = {
+        totalTests: stats.total || 0,
+        passedTests: stats.passed || 0,
+        failedTests: stats.failed || 0,
+        newTests: stats.new || 0,
+        successRate: `${stats.success_rate || 0}%`
+    };
+    
+    Object.keys(elements).forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = elements[id];
+        }
     });
+}
+
+function filterTestCases() {
+    const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
+    const statusFilter = document.getElementById('filterStatus')?.value || 'all';
+    
+    let filtered = allTestCases;
+    
+    // 상태 필터
+    if (statusFilter !== 'all') {
+        filtered = filtered.filter(tc => tc.status === statusFilter);
+    }
+    
+    // 검색어 필터
+    if (searchTerm) {
+        filtered = filtered.filter(tc => 
+            (tc.title && tc.title.toLowerCase().includes(searchTerm)) ||
+            (tc.id && tc.id.toLowerCase().includes(searchTerm)) ||
+            (tc.category && tc.category.toLowerCase().includes(searchTerm))
+        );
+    }
     
     renderTestCases(filtered);
 }
 
-function switchTab(tabName) {
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.tab === tabName) {
-            btn.classList.add('active');
+// ============================================
+// 히스토리
+// ============================================
+async function loadHistory() {
+    try {
+        console.log('히스토리 로드 시작');
+        
+        const response = await fetch('/api/history');
+        const data = await response.json();
+        
+        console.log('히스토리 데이터:', data);
+        
+        if (data.success) {
+            allHistory = data.history;
+            renderHistory(allHistory);
+        } else {
+            console.error('히스토리 로드 실패:', data.error);
+            const container = document.getElementById('historyList');
+            if (container) {
+                container.innerHTML = '<p class="empty-state">⚠️ 히스토리를 불러오는데 실패했습니다.</p>';
+            }
         }
-    });
-    
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
-    
-    const tabMap = {
-        'testCases': 'testCasesTab',
-        'history': 'historyTab',
-        // 'reports': 'reportsTab',  ← 삭제
-        'github': 'githubTab'
-    };
-    
-    const targetTab = document.getElementById(tabMap[tabName]);
-    if (targetTab) {
-        targetTab.classList.add('active');
-    }
-    
-    // 리포트 탭 로드 제거
-    if (tabName === 'github') {
-        loadGithubActionsStatus();
+    } catch (error) {
+        console.error('히스토리 로드 오류:', error);
+        const container = document.getElementById('historyList');
+        if (container) {
+            container.innerHTML = '<p class="empty-state">⚠️ 서버 연결 오류</p>';
+        }
     }
 }
 
-console.log('main.js 로드 완료');
+function renderHistory(history) {
+    const container = document.getElementById('historyList');
+
+    if (!container) {
+        console.error('historyList 컨테이너를 찾을 수 없습니다');
+        return;
+    }
+
+    if (!history || history.length === 0) {
+        container.innerHTML = '<p class="empty-state">실행 히스토리가 없습니다.</p>';
+        return;
+    }
+
+    container.innerHTML = history.map((item, index) => {
+        const passRate = item.total > 0 ? Math.round((item.passed / item.total) * 100) : 0;
+        
+        // 날짜 포맷팅
+        const date = item.date || item.timestamp || new Date().toISOString();
+        const formattedDate = formatHistoryDate(date);
+        
+        return `
+            <div class="history-item">
+                <div class="history-header">
+                    <span class="history-date">📅 ${formattedDate}</span>
+                    ${item.report_path ? 
+                        `<button class="btn-report" onclick="showReportModal('${item.report_path}', ${index})">
+                            📊 리포트 보기
+                        </button>` 
+                        : ''
+                    }
+                </div>
+                <div class="history-stats">
+                    ✅ ${item.passed} / ❌ ${item.failed} / ⏭️ ${item.skipped || 0} / ⏱️ ${item.duration || 'N/A'}
+                </div>
+                <div class="history-bar">
+                    <div class="history-bar-fill" style="width: ${passRate}%"></div>
+                </div>
+                <div class="history-footer">
+                    <span>전체: ${item.total}</span>
+                    <span>성공률: ${passRate}%</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 날짜 포맷 헬퍼 함수
+function formatHistoryDate(dateString) {
+    try {
+        const date = new Date(dateString);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        
+        return `${year}. ${month}. ${day}. 오후 ${hours}:${minutes}:${seconds}`;
+    } catch (e) {
+        return dateString;
+    }
+}
+
+// ============================================
+// GitHub Actions
+// ============================================
+async function triggerGithubAction() {
+    const environment = document.getElementById('githubEnvironment')?.value;
+    const browser = document.getElementById('githubBrowser')?.value;
+    
+    if (!environment || !browser) {
+        showModal('❌ 오류', '<p>환경과 브라우저를 선택해주세요.</p>');
+        return;
+    }
+    
+    try {
+        console.log('GitHub Actions 트리거:', { environment, browser });
+        
+        const response = await fetch('/api/github/trigger', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                environment: environment,
+                browser: browser
+            })
+        });
+        
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+        
+        // Content-Type 확인
+        const contentType = response.headers.get('content-type');
+        console.log('Content-Type:', contentType);
+        
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response:', text);
+            showModal('❌ 오류', `<p>서버에서 올바른 응답을 받지 못했습니다.</p><pre>${text.substring(0, 200)}</pre>`);
+            return;
+        }
+        
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        if (data.success) {
+            const body = `
+                <p>✅ ${data.message}</p>
+                ${data.run_url ? `<p><a href="${data.run_url}" target="_blank" class="detail-link">실행 상태 확인 →</a></p>` : ''}
+            `;
+            showModal('✅ 성공', body);
+            
+            // 실행 히스토리 새로고침
+            setTimeout(() => {
+                loadGithubRuns();
+            }, 2000);
+        } else {
+            const errorDetail = data.detail ? `<pre style="background: #f7fafc; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px;">${JSON.stringify(data.detail, null, 2)}</pre>` : '';
+            showModal('❌ 오류 발생', `<p>${data.error}</p>${errorDetail}`);
+        }
+        
+    } catch (error) {
+        console.error('GitHub Actions 트리거 오류:', error);
+        showModal('❌ 오류 발생', `<p>요청 처리 중 오류가 발생했습니다.</p><p>${error.message}</p>`);
+    }
+}
+
+async function loadGithubRuns() {
+    try {
+        console.log('GitHub 실행 히스토리 로드 시작');
+        
+        const response = await fetch('/api/github/runs');
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response:', text);
+            const container = document.getElementById('githubRunsList');
+            if (container) {
+                container.innerHTML = '<p class="empty-state">⚠️ 서버 응답 오류</p>';
+            }
+            return;
+        }
+        
+        const data = await response.json();
+        console.log('GitHub 실행 히스토리:', data);
+        
+        const container = document.getElementById('githubRunsList');
+        if (!container) {
+            console.error('githubRunsList 컨테이너를 찾을 수 없습니다');
+            return;
+        }
+        
+        if (!data.success || !data.runs || data.runs.length === 0) {
+            container.innerHTML = '<p class="empty-state">실행 히스토리가 없습니다.</p>';
+            return;
+        }
+        
+        container.innerHTML = data.runs.map(run => {
+            const statusClass = run.conclusion === 'success' ? 'success' : 
+                              run.conclusion === 'failure' ? 'failure' : '';
+            const statusText = run.status === 'completed' ? run.conclusion : run.status;
+            const statusEmoji = run.conclusion === 'success' ? '✅' : 
+                              run.conclusion === 'failure' ? '❌' : 
+                              run.status === 'in_progress' ? '⏳' : '⏸️';
+            
+            return `
+                <div class="github-run-item">
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 4px;">
+                            ${run.name || 'Manual QA Test'}
+                        </div>
+                        <div style="font-size: 13px; color: #718096;">
+                            ${new Date(run.created_at).toLocaleString('ko-KR')}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span class="run-status ${run.status} ${statusClass}">
+                            ${statusEmoji} ${statusText || 'unknown'}
+                        </span>
+                        <a href="${run.html_url}" target="_blank" class="btn btn-sm btn-secondary">
+                            상세보기
+                        </a>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('GitHub 실행 히스토리 로드 오류:', error);
+        const container = document.getElementById('githubRunsList');
+        if (container) {
+            container.innerHTML = '<p class="empty-state">⚠️ 실행 히스토리를 불러오는 중 오류가 발생했습니다.</p>';
+        }
+    }
+}
+
+function showGithubModal() {
+    const body = `
+        <div class="github-modal-content">
+            <div class="form-group">
+                <label for="modalEnvironment">테스트 환경</label>
+                <select id="modalEnvironment" class="input">
+                    <option value="production">Production</option>
+                    <option value="staging">Staging</option>
+                    <option value="development">Development</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="modalBrowser">브라우저</label>
+                <select id="modalBrowser" class="input">
+                    <option value="chromium">Chromium</option>
+                    <option value="firefox">Firefox</option>
+                    <option value="webkit">WebKit</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-github" onclick="executeGithubAction()" style="width: 100%; margin-top: 16px;">
+                🚀 실행
+            </button>
+        </div>
+    `;
+    
+    showModal('🚀 GitHub Actions 실행', body);
+}
+
+async function executeGithubAction() {
+    const environment = document.getElementById('modalEnvironment')?.value;
+    const browser = document.getElementById('modalBrowser')?.value;
+    
+    closeModal();
+    
+    if (!environment || !browser) {
+        showModal('❌ 오류', '<p>환경과 브라우저를 선택해주세요.</p>');
+        return;
+    }
+    
+    try {
+        console.log('GitHub Actions 트리거:', { environment, browser });
+        
+        const response = await fetch('/api/github/trigger', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                environment: environment,
+                browser: browser
+            })
+        });
+        
+        const contentType = response.headers.get('content-type');
+        
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response:', text);
+            showModal('❌ 오류', `<p>서버에서 올바른 응답을 받지 못했습니다.</p>`);
+            return;
+        }
+        
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        if (data.success) {
+            const body = `
+                <p>✅ ${data.message}</p>
+                ${data.run_url ? `<p><a href="${data.run_url}" target="_blank" class="detail-link">실행 상태 확인 →</a></p>` : ''}
+            `;
+            showModal('✅ 성공', body);
+            
+            setTimeout(() => {
+                loadGithubRuns();
+            }, 2000);
+        } else {
+            const errorDetail = data.detail ? `<pre style="background: #f7fafc; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px;">${JSON.stringify(data.detail, null, 2)}</pre>` : '';
+            showModal('❌ 오류 발생', `<p>${data.error}</p>${errorDetail}`);
+        }
+        
+    } catch (error) {
+        console.error('GitHub Actions 트리거 오류:', error);
+        showModal('❌ 오류 발생', `<p>요청 처리 중 오류가 발생했습니다.</p><p>${error.message}</p>`);
+    }
+}
+
+// ============================================
+// 모달
+// ============================================
+function showModal(title, body) {
+    console.log('모달 표시:', title);
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    
+    if (modal && modalTitle && modalBody) {
+        modalTitle.textContent = title;
+        modalBody.innerHTML = body;
+        modal.style.display = 'flex';  // flex로 중앙 정렬
+    }
+}
+
+function closeModal() {
+    console.log('모달 닫기');
+    const modal = document.getElementById('modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// ============================================
+// 테스트 실행
+// ============================================
+async function runAllTests() {
+    try {
+        const response = await fetch('/api/run-tests', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ type: 'all' })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showModal('✅ 테스트 시작', `<p>${data.message}</p><p>실행 ID: ${data.run_id}</p>`);
+            
+            // 히스토리 새로고침
+            setTimeout(() => {
+                loadHistory();
+            }, 1000);
+        } else {
+            showModal('❌ 오류', `<p>${data.error}</p>`);
+        }
+    } catch (error) {
+        console.error('테스트 실행 오류:', error);
+        showModal('❌ 오류', `<p>테스트 실행 중 오류가 발생했습니다.</p><p>${error.message}</p>`);
+    }
+}
+
+async function refreshData() {
+    try {
+        console.log('데이터 새로고침 시작');
+        
+        await Promise.all([
+            loadTestCases(),
+            loadHistory(),
+            loadGithubRuns()
+        ]);
+        
+        showModal('✅ 새로고침 완료', '<p>모든 데이터가 업데이트되었습니다.</p>');
+        
+        setTimeout(() => {
+            closeModal();
+        }, 1500);
+        
+    } catch (error) {
+        console.error('데이터 새로고침 오류:', error);
+        showModal('❌ 오류', `<p>데이터 새로고침 중 오류가 발생했습니다.</p>`);
+    }
+}
+
+function showReportModal(reportPath, historyIndex) {
+    if (!reportPath) {
+        showModal('❌ 오류', '<p>리포트를 찾을 수 없습니다.</p>');
+        return;
+    }
+    
+    // 모달 HTML 생성 (통계 제거, iframe만 표시)
+    const modalHTML = `
+        <div class="report-modal-overlay" onclick="closeReportModal()">
+            <div class="report-modal-content" onclick="event.stopPropagation()">
+                <div class="report-modal-header">
+                    <h2>📊 QA 테스트 리포트</h2>
+                    <button class="modal-close-btn" onclick="closeReportModal()">×</button>
+                </div>
+                
+                <div class="report-modal-body">
+                    <div class="report-iframe-container">
+                        <iframe src="${reportPath}" class="report-iframe"></iframe>
+                    </div>
+                </div>
+                
+                <div class="report-modal-footer">
+                    <button class="btn-secondary" onclick="closeReportModal()">닫기</button>
+                    <a href="${reportPath}" target="_blank" class="btn-primary">새 탭에서 열기</a>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 기존 모달 제거 후 새로 추가
+    closeReportModal();
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // ESC 키로 닫기
+    document.addEventListener('keydown', handleEscKey);
+}
+
+function closeReportModal() {
+    const modal = document.querySelector('.report-modal-overlay');
+    if (modal) {
+        modal.remove();
+    }
+    document.removeEventListener('keydown', handleEscKey);
+}
+
+function handleEscKey(e) {
+    if (e.key === 'Escape') {
+        closeReportModal();
+    }
+}
