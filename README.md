@@ -1,4 +1,4 @@
-> Google Sheets 연동 + Playwright 기반 웹 테스트 자동화 시스템
+> Google Sheets 연동 + Open AI API + Playwright 기반 웹 테스트 자동화 시스템
 
 ## 🎯 프로젝트 개요
 - 바이브 코딩을 통한 QA 자동화 연구
