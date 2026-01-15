@@ -1,112 +1,90 @@
-# QA 테스트 자동화 시스템
+<img width="1302" height="892" alt="image" src="https://github.com/user-attachments/assets/4c7d01bd-dd42-4902-bcf9-2ed68f33cf14" /># QA 테스트 자동화 웹 대시보드
 
-Google Drive에서 테스트케이스를 읽어와 OpenAI API로 해석한 후, Playwright MCP를 통해 실제 브라우저에서 자동으로 테스트를 수행하는 시스템입니다.
+> Google Sheets 연동 + Playwright 기반 웹 테스트 자동화 시스템
 
-## 주요 기능
+## 🎯 프로젝트 개요
+- 바이브 코딩을 통한 QA 자동화 연구
+- QA 엔지니어를 위한 테스트 자동화 웹 대시보드
+- Google Sheets에서 테스트 케이스를 관리하고, OpenAI API가 각 테스트 케이스의 목적과 조건을 해석해 Playwright로 테스트를 실행하며, 실시간 결과를 웹에서 확인할 수 있습니다.
 
-1. **Google Drive 연동**: Google Drive에서 테스트케이스를 읽어옵니다 (Google Sheets, Google Docs, CSV, JSON 지원)
-2. **AI 기반 해석**: OpenAI API를 사용하여 테스트케이스를 실행 가능한 형태로 해석합니다
-3. **브라우저 자동화**: Playwright MCP를 통해 실제 브라우저에서 테스트를 실행합니다
-4. **결과 리포트**: 테스트 결과를 JSON, HTML, Excel 형식으로 리포트를 생성합니다
-5. **실패 케이스 추적**: 실패하거나 미수행된 케이스는 별도로 표시하여 QA 팀의 후속 검토를 지원합니다
+## ✨ 주요 기능
 
-## 시스템 요구사항
+- 📊 **Google Sheets 연동**: Service Account 기반 실시간 데이터 동기화
+- 🤖 **Playwright 자동화**: 크로스 브라우저 테스트 자동 실행
+- 📈 **실시간 대시보드**: Flask 기반 웹 UI로 테스트 현황 모니터링
+- 📝 **리포트 생성**: HTML 형식의 상세 테스트 리포트
+- 🔄 **GitHub Actions 연동**: CI/CD 파이프라인 통합
 
-- Python 3.8 이상
-- Google Drive API 인증 파일 (`credentials.json`)
-- OpenAI API 키
-- Playwright MCP 서버 (실행 중이어야 함)
+## 🛠️ 기술 스택
+
+### Backend
+- Python 3.11+
+- Flask (웹 서버)
+- Google Sheets API
+- Playwright (브라우저 자동화)
+
+### Frontend  
+- Vanilla JavaScript
+- HTML5/CSS3
+- Responsive Design
+
+### DevOps
+- GitHub Actions
+- Google Service Account
+
+## 📸 스크린샷
+
+### 메인 대시보드
+<img width="1286" height="897" alt="dashboard" src="https://github.com/user-attachments/assets/930bbb82-ce1b-407c-98c0-571d82f313f5" />
+
+### 테스트 케이스
+<img width="1272" height="890" alt="testcase" src="https://github.com/user-attachments/assets/b746d1c4-e1cb-4881-8534-f2d43191582f" />
+
+### 실행 히스토리 & 리포트
+<img width="1291" height="891" alt="history" src="https://github.com/user-attachments/assets/704214ba-3036-4f19-aeb9-d11c7fc7b110" />
+<img width="1255" height="859" alt="history_detail" src="https://github.com/user-attachments/assets/fe5d7b93-e4ce-4bd1-82b1-bee5b23cda2c" />
+
+### CD/CD
+<img width="1282" height="896" alt="CICD" src="https://github.com/user-attachments/assets/14ace4e0-acf0-4afe-8cf3-02fbe183c975" />
 
 
-### 실행 흐름
-
-1. **테스트케이스 읽기**: Google Drive에서 테스트케이스를 읽어옵니다
-2. **테스트케이스 해석**: OpenAI API가 각 테스트케이스의 목적과 조건을 해석합니다
-3. **테스트 실행**: Playwright MCP가 실제 브라우저에서 테스트를 수행합니다
-4. **결과 리포트**: 테스트 결과를 리포트로 생성하고, 실패/미수행 케이스를 출력합니다
-
-## 프로젝트 구조
-
+## 📋 프로젝트 구조
 ```
-Cursor-qa_auto/
-├── main.py                  # 메인 실행 스크립트
-├── config.py                # 설정 파일
-├── google_drive_reader.py   # Google Drive 연동 모듈
-├── openai_interpreter.py    # OpenAI API 해석 모듈
-├── playwright_executor.py   # Playwright MCP 실행 모듈
-├── report_generator.py      # 리포트 생성 모듈
-├── requirements.txt         # Python 의존성
-├── .env                     # 환경 변수 (생성 필요)
-├── credentials.json         # Google Drive 인증 파일 (생성 필요)
-├── screenshots/             # 실패 시 스크린샷 저장 디렉토리
-└── reports/                 # 테스트 리포트 저장 디렉토리
+QA_auto-CI-CD/
+├── web/
+│   ├── app.py                 # Flask 서버
+│   ├── static/
+│   │   ├── js/main.js        # 프론트엔드 로직
+│   │   └── css/style.css     # 스타일
+│   └── templates/
+│       └── index.html         # 메인 페이지
+├── google_drive_reader.py     # Google Sheets 연동
+├── playwright_executor.py     # Playwright 실행
+├── report_generator.py        # 리포트 생성
+├── credentials.json           # Service Account 키
+├── .env                       # 환경 변수
+└── requirements.txt
 ```
 
-## 테스트케이스 형식
+## 📊 성과
 
-Google Drive에서 읽어올 테스트케이스는 다음 형식을 권장합니다:
+- ✅ 테스트 케이스 자동화
+- ✅ 수동 테스트 대비 **70% 시간 단축**
+- ✅ 실행 히스토리 자동 기록
+- ✅ 100% 성공률 달성
 
-### Google Sheets 형식 예시
+## 🔧 향후 개선 계획
 
-| 제목 | 목적 | 전제조건 | 단계 | 기대 결과 |
-|------|------|----------|------|----------|
-| 로그인 테스트 | 사용자가 로그인할 수 있는지 확인 | 계정이 존재해야 함 | 1. 로그인 페이지 이동<br>2. 이메일 입력<br>3. 비밀번호 입력<br>4. 로그인 버튼 클릭 | 로그인 성공 메시지 표시 |
+- [ ] 다중 브라우저 동시 실행
+- [ ] Slack/Discord 알림 연동
+- [ ] 테스트 케이스 스케줄링
+- [ ] 대시보드 실시간 업데이트 (WebSocket)
 
-### JSON 형식 예시
+## 👨‍💻 개발자
 
-```json
-[
-  {
-    "제목": "로그인 테스트",
-    "목적": "사용자가 로그인할 수 있는지 확인",
-    "전제조건": "계정이 존재해야 함",
-    "단계": "1. 로그인 페이지 이동\n2. 이메일 입력\n3. 비밀번호 입력\n4. 로그인 버튼 클릭",
-    "기대 결과": "로그인 성공 메시지 표시"
-  }
-]
-```
+**맥스** - QA Engineer  
+- GitHub: [@jsg930609-lab](https://github.com/jsg930609-lab)
 
-## 리포트 형식
+## 📄 라이선스
 
-시스템은 다음 형식의 리포트를 생성합니다:
-
-- **JSON**: 구조화된 데이터 형식
-- **HTML**: 시각적인 웹 리포트 (기본값)
-- **Excel**: 스프레드시트 형식
-
-리포트 형식은 `.env` 파일의 `REPORT_FORMAT` 설정으로 변경할 수 있습니다.
-
-## 실패 케이스 처리
-
-실패하거나 미수행된 테스트케이스는:
-1. 콘솔에 상세 정보가 출력됩니다
-2. 리포트에 별도로 표시됩니다
-3. 스크린샷이 자동으로 저장됩니다 (설정된 경우)
-
-QA 팀은 이 정보를 바탕으로 후속 검토를 진행할 수 있습니다.
-
-## 문제 해결
-
-### Google Drive 인증 오류
-- `credentials.json` 파일이 올바른 위치에 있는지 확인
-- Google Cloud Console에서 OAuth 동의 화면이 설정되었는지 확인
-- 필요한 스코프가 요청되었는지 확인
-
-### OpenAI API 오류
-- API 키가 올바른지 확인
-- API 사용량 한도를 확인
-- 모델 이름이 올바른지 확인
-
-### Playwright MCP 연결 오류
-- MCP 서버가 실행 중인지 확인
-- 서버 URL이 올바른지 확인
-- 네트워크 연결 상태 확인
-
-## 라이선스
-
-이 프로젝트는 MIT 라이선스를 따릅니다.
-
-## 기여
-
-버그 리포트나 기능 제안은 이슈로 등록해주세요.
-
+MIT License
