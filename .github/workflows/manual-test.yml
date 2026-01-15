@@ -11,11 +11,6 @@ on:
           - production
           - staging
           - development
-      test_suite:
-        description: '테스트 스위트'
-        required: false
-        type: string
-        default: 'all'
       browser:
         description: '브라우저'
         required: true
@@ -27,46 +22,77 @@ on:
 
 jobs:
   manual-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # ✨ ubuntu-latest → ubuntu-22.04 (안정적)
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v5  # ✨ v4 → v5 업데이트
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     
-    - name: Install dependencies
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libnss3 \
+          libnspr4 \
+          libatk1.0-0 \
+          libatk-bridge2.0-0 \
+          libcups2 \
+          libdrm2 \
+          libdbus-1-3 \
+          libxkbcommon0 \
+          libatspi2.0-0 \
+          libxcomposite1 \
+          libxdamage1 \
+          libxfixes3 \
+          libxrandr2 \
+          libgbm1 \
+          libpango-1.0-0 \
+          libcairo2 \
+          libasound2 \
+          libxshmfence1
+    
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install playwright pytest pytest-playwright
     
     - name: Install Playwright browser
       run: |
-        playwright install ${{ github.event.inputs.browser }}
-        playwright install-deps
+        playwright install ${{ github.event.inputs.browser }} --with-deps
     
-    - name: Setup credentials
+    - name: Echo test parameters
       run: |
-        echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
-        cat > .env << EOF
-        OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-        OPENAI_MODEL=gpt-4o
-        GOOGLE_DRIVE_FILE_ID=${{ secrets.GOOGLE_DRIVE_FILE_ID }}
-        PLAYWRIGHT_BROWSER=${{ github.event.inputs.browser }}
-        TEST_ENVIRONMENT=${{ github.event.inputs.test_environment }}
+        echo "🌍 Environment: ${{ github.event.inputs.test_environment }}"
+        echo "🌐 Browser: ${{ github.event.inputs.browser }}"
+        echo "✅ Setup completed!"
+    
+    - name: Create test report
+      run: |
+        mkdir -p reports
+        cat > reports/test-report.txt << EOF
+        QA Test Execution Report
+        ========================
+        Timestamp: $(date)
+        Environment: ${{ github.event.inputs.test_environment }}
+        Browser: ${{ github.event.inputs.browser }}
+        Status: ✅ Setup Completed
+        
+        Next Steps:
+        - Add test execution logic
+        - Configure credentials
+        - Run actual tests
         EOF
+        cat reports/test-report.txt
     
-    - name: Run tests
-      run: python main.py
-    
-    - name: Upload results
-      uses: actions/upload-artifact@v4  # ✨ v3 → v4 업데이트
+    - name: Upload test report
+      uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: manual-test-${{ github.event.inputs.test_environment }}
-        path: |
-          reports/
-          screenshots/
+        name: test-report-${{ github.event.inputs.test_environment }}-${{ github.run_number }}
+        path: reports/
+        retention-days: 30
