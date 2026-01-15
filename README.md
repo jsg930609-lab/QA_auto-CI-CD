@@ -1,5 +1,3 @@
-<img width="1302" height="892" alt="image" src="https://github.com/user-attachments/assets/4c7d01bd-dd42-4902-bcf9-2ed68f33cf14" /># QA 테스트 자동화 웹 대시보드
-
 > Google Sheets 연동 + Playwright 기반 웹 테스트 자동화 시스템
 
 ## 🎯 프로젝트 개요
