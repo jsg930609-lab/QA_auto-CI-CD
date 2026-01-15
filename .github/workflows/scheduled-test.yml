@@ -1,0 +1,83 @@
+name: Scheduled QA Tests
+
+on:
+  schedule:
+    # 매일 오전 9시 (UTC 0시 = 한국 시간 9시)
+    - cron: '0 0 * * *'
+  workflow_dispatch:  # 수동 실행도 가능
+
+jobs:
+  scheduled-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        playwright install chromium
+        playwright install-deps
+    
+    - name: Setup credentials
+      run: |
+        echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
+        cat > .env << EOF
+        OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        OPENAI_MODEL=gpt-4o
+        OPENAI_MAX_TOKENS=2000
+        GOOGLE_DRIVE_FILE_ID=${{ secrets.GOOGLE_DRIVE_FILE_ID }}
+        GOOGLE_SHEETS_NAME=Sheet1
+        GOOGLE_SHEETS_START_ROW=12
+        EOF
+    
+    - name: Run QA tests
+      run: python main.py
+      continue-on-error: true
+    
+    - name: Upload reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: scheduled-test-report-${{ github.run_number }}
+        path: reports/
+    
+    - name: Send Slack notification
+      if: always()
+      uses: slackapi/slack-github-action@v1.24.0
+      with:
+        payload: |
+          {
+            "text": "QA 자동화 테스트 완료",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*QA 테스트 결과*\n실행 시간: ${{ github.event.repository.updated_at }}\n상태: ${{ job.status }}"
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "리포트 보기"
+                    },
+                    "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -1,0 +1,99 @@
+name: QA Tests on Push
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Install Playwright browsers
+      run: |
+        playwright install chromium
+        playwright install-deps
+    
+    - name: Create credentials file
+      run: |
+        echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
+    
+    - name: Create .env file
+      run: |
+        cat > .env << EOF
+        OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        OPENAI_MODEL=gpt-4o
+        OPENAI_MAX_TOKENS=2000
+        GOOGLE_DRIVE_FILE_ID=${{ secrets.GOOGLE_DRIVE_FILE_ID }}
+        GOOGLE_SHEETS_NAME=Sheet1
+        GOOGLE_SHEETS_START_ROW=12
+        TEST_TIMEOUT=30000
+        SCREENSHOT_ON_FAILURE=true
+        SCREENSHOT_DIR=screenshots
+        REPORT_DIR=reports
+        EOF
+    
+    - name: Run QA tests
+      run: |
+        python main.py
+      continue-on-error: true
+    
+    - name: Upload test reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-reports
+        path: reports/
+        retention-days: 30
+    
+    - name: Upload screenshots
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: failure-screenshots
+        path: screenshots/
+        retention-days: 7
+    
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const reportDir = 'reports/';
+          
+          // 최신 리포트 파일 찾기
+          const files = fs.readdirSync(reportDir);
+          const latestReport = files.sort().reverse()[0];
+          
+          if (latestReport) {
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🧪 테스트 결과\n\n테스트가 완료되었습니다.\n\n📊 [리포트 다운로드](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+            });
+          }

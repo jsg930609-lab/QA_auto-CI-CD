@@ -1,0 +1,34 @@
+# 환경 변수
+.env
+.env.local
+
+# Google 인증
+credentials.json
+token.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
+# 테스트 결과
+reports/
+screenshots/
+web/test_history.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
