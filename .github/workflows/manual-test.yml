@@ -34,7 +34,7 @@ jobs:
       uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5  # ✨ v4 → v5 업데이트
       with:
         python-version: '3.11'
     
@@ -63,7 +63,7 @@ jobs:
       run: python main.py
     
     - name: Upload results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4  # ✨ v3 → v4 업데이트
       if: always()
       with:
         name: manual-test-${{ github.event.inputs.test_environment }}
