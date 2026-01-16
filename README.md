@@ -7,29 +7,48 @@
 
 ## ✨ 주요 기능
 
-- 📊 **Google Sheets 연동**: Service Account 기반 실시간 데이터 동기화
-- 🤖 **Playwright 자동화**: 크로스 브라우저 테스트 자동 실행
-- 📈 **실시간 대시보드**: Flask 기반 웹 UI로 테스트 현황 모니터링
-- 📝 **리포트 생성**: HTML 형식의 상세 테스트 리포트
-- 🔄 **GitHub Actions 연동**: CI/CD 파이프라인 통합
+### 📊 실시간 대시보드
+- 테스트 케이스 현황 및 통계 실시간 표시
+- 검색 및 필터링 기능
+- 반응형 웹 디자인
+
+### 🔄 Google Sheets 연동
+- Service Account 기반 자동 동기화
+- 테스트 케이스 실시간 로드
+- 양방향 데이터 연동
+
+### 🤖 자동화 실행
+- Playwright 기반 브라우저 자동화
+- 실시간 진행률 표시
+- 성공/실패 결과 자동 수집
+
+### 📈 리포트 생성
+- HTML 형식의 상세 테스트 리포트
+- 테스트 케이스별 결과 분석
+- 히스토리 자동 기록 및 관리
+
+### 🔄 GitHub Actions 연동
+- CI/CD 파이프라인 통합
+- 워크플로우 원격 트리거
+- 실행 히스토리 조회
 
 ## 🛠️ 기술 스택
 
 ### Backend
-- Python 3.11+
-- Flask (웹 서버)
-- Google Sheets API
-- Playwright (브라우저 자동화)
+- **Python 3.11+**: 메인 언어
+- **Flask 3.0+**: 웹 서버 프레임워크
+- **Google Sheets API**: 테스트 케이스 관리
+- **Playwright**: 브라우저 자동화
+- **asyncio**: 비동기 처리
 
-### Frontend  
-- Vanilla JavaScript
-- HTML5/CSS3
-- Responsive Design
+### Frontend
+- **Vanilla JavaScript**: 프론트엔드 로직
+- **HTML5/CSS3**: UI 구성
+- **Responsive Design**: 모바일 지원
 
 ### DevOps
-- GitHub Actions
-- Google Service Account
-
+- **GitHub Actions**: CI/CD 파이프라인
+- **Google Service Account**: 인증 및 권한 관리
 ## 📸 스크린샷
 
 ### 메인 대시보드
@@ -49,22 +68,28 @@
 <img width="1282" height="896" alt="CICD" src="https://github.com/user-attachments/assets/14ace4e0-acf0-4afe-8cf3-02fbe183c975" />
 
 
-## 📋 프로젝트 구조
+## 📁 프로젝트 구조
 ```
 QA_auto-CI-CD/
 ├── web/
-│   ├── app.py                 # Flask 서버
+│   ├── app.py                # Flask 서버
 │   ├── static/
-│   │   ├── js/main.js        # 프론트엔드 로직
-│   │   └── css/style.css     # 스타일
-│   └── templates/
-│       └── index.html         # 메인 페이지
-├── google_drive_reader.py     # Google Sheets 연동
-├── playwright_executor.py     # Playwright 실행
-├── report_generator.py        # 리포트 생성
-├── credentials.json           # Service Account 키
-├── .env                       # 환경 변수
-└── requirements.txt
+│   │   ├── js/
+│   │   │   └── main.js       # 프론트엔드 로직
+│   │   └── css/
+│   │       └── style.css     # 스타일시트
+│   ├── templates/
+│   │   └── index.html        # 메인 페이지
+│   └── test_history.json     # 실행 히스토리
+├── reports/                  # 테스트 리포트
+├── screenshots/              # README 스크린샷
+├── google_drive_reader.py    # Google Sheets 연동
+├── config.py                 # 설정 관리
+├── credentials.json          # Service Account 키
+├── .env                      # 환경 변수
+├── .gitignore
+├── requirements.txt
+└── README.md
 ```
 
 ## 📊 성과
@@ -76,16 +101,14 @@ QA_auto-CI-CD/
 
 ## 🔧 향후 개선 계획
 
-- [ ] 다중 브라우저 동시 실행
+- [ ] 테스트 케이스 개별 선택 실행
+- [ ] 다중 브라우저 동시 실행 (Chrome, Firefox, Safari)
 - [ ] Slack/Discord 알림 연동
 - [ ] 테스트 케이스 스케줄링
+- [ ] 실패 시 스크린샷 자동 첨부
 - [ ] 대시보드 실시간 업데이트 (WebSocket)
 
 ## 👨‍💻 개발자
 
 **맥스** - QA Engineer  
 - GitHub: [@jsg930609-lab](https://github.com/jsg930609-lab)
-
-## 📄 라이선스
-
-MIT License
