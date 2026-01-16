@@ -38,6 +38,9 @@
 ### 테스트 케이스
 <img width="1272" height="890" alt="testcase" src="https://github.com/user-attachments/assets/b746d1c4-e1cb-4881-8534-f2d43191582f" />
 
+### 진행 프로그레스바
+<img width="954" height="699" alt="progressbar" src="https://github.com/user-attachments/assets/a2bb7c1e-f462-4cbe-829a-b8042a200bf6" />
+
 ### 실행 히스토리 & 리포트
 <img width="1291" height="891" alt="history" src="https://github.com/user-attachments/assets/704214ba-3036-4f19-aeb9-d11c7fc7b110" />
 <img width="1255" height="859" alt="history_detail" src="https://github.com/user-attachments/assets/fe5d7b93-e4ce-4bd1-82b1-bee5b23cda2c" />
